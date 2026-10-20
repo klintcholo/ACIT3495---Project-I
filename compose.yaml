@@ -1,0 +1,32 @@
+services:
+  enter-data:
+    build:
+      context: ./enter-data
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=mysql+pymysql://admin:${MYSQL_PASSWORD}@db:3306/grades
+    ports:
+      - "127.0.0.1:5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:8.4
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=grades
+      - MYSQL_USER=admin
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - TZ=America/Vancouver
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  mysql-data:
