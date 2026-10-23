@@ -1,7 +1,9 @@
 import os
 import jwt
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, render_template
 from models import db, Grade
+import urllib.request
+import urllib.error
 
 app = Flask(__name__)
 
@@ -15,11 +17,9 @@ with app.app_context():
     db.create_all()
 
 
-@app.route("/")
+@app.route("/", methods=["GET"])
 def home():
-    return jsonify({
-        "message": "Student Grade Analytics - Enter Data"
-    })
+    return render_template("index.html")
 
 @app.route("/health")
 def health():
@@ -28,6 +28,38 @@ def health():
     }), 200
 
 
+@app.route("/web/login", methods=["POST"])
+def web_login():
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return jsonify({"error": "Invalid JSON data"}), 400
+
+    login_data = jsonify({
+        "username": data.get("username"),
+        "password": data.get("password")
+    }).get_data()
+
+    auth_request = urllib.request.Request(
+        "http://auth-service:5001/login",
+        data=login_data,
+        headers={"Content-Type": "application/json"},
+        method="POST"
+    )
+
+    try:
+        with urllib.request.urlopen(auth_request, timeout=5) as response:
+            return response.read(), response.status, {
+                "Content-Type": "application/json"
+            }
+    except urllib.error.HTTPError as error:
+        return error.read(), error.code, {
+            "Content-Type": "application/json"
+        }
+    except urllib.error.URLError:
+        return jsonify({"error": "Authentication service unavailable"}), 503
+
+    
 @app.route("/grades", methods=["POST"])
 def enter_grade():
 

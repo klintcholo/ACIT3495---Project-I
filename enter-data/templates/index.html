@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Student Grade Entry</title>
+
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f4f6f9;
+        margin: 0;
+        padding: 40px 20px;
+      }
+
+      .container {
+        max-width: 450px;
+        margin: auto;
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      h1 {
+        text-align: center;
+        color: #1d3557;
+      }
+
+      label {
+        display: block;
+        margin-top: 15px;
+        margin-bottom: 5px;
+      }
+
+      input {
+        width: 100%;
+        padding: 10px;
+        box-sizing: border-box;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+
+      button {
+        width: 100%;
+        padding: 12px;
+        margin-top: 20px;
+        background: #2563eb;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: #1d4ed8;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      #message {
+        margin-top: 15px;
+        text-align: center;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <h1>Student Grade Entry</h1>
+
+      <!-- Login Form -->
+      <form id="loginForm">
+        <h2>Login</h2>
+
+        <label for="username">Username</label>
+        <input type="text" id="username" required />
+
+        <label for="password">Password</label>
+        <input type="password" id="password" required />
+
+        <button type="submit">Login</button>
+      </form>
+
+      <!-- Grade Entry Form -->
+      <form id="gradeForm" class="hidden">
+        <h2>Enter Grade</h2>
+
+        <label for="student_id">Student ID</label>
+        <input type="text" id="student_id" required />
+
+        <label for="course">Course</label>
+        <input type="text" id="course" required />
+
+        <label for="grade">Grade</label>
+        <input type="number" id="grade" min="0" max="100" step="any" required />
+
+        <button type="submit">Submit Grade</button>
+        <button type="button" id="logoutButton">Logout</button>
+      </form>
+
+      <p id="message" role="status"></p>
+    </div>
+
+    <script>
+      let token = "";
+
+      const loginForm = document.getElementById("loginForm");
+      const gradeForm = document.getElementById("gradeForm");
+      const message = document.getElementById("message");
+
+      loginForm.addEventListener("submit", async function (event) {
+        event.preventDefault();
+
+        const username = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
+
+        try {
+          const response = await fetch("/web/login", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ username, password }),
+          });
+
+          const data = await response.json();
+
+          if (response.ok && data.token) {
+            token = data.token;
+            loginForm.classList.add("hidden");
+            gradeForm.classList.remove("hidden");
+            message.textContent = "Login successful!";
+          } else {
+            message.textContent = data.error || "Login failed.";
+          }
+        } catch (error) {
+          message.textContent = "Unable to connect to Authentication.";
+        }
+      });
+
+      gradeForm.addEventListener("submit", async function (event) {
+        event.preventDefault();
+
+        const student_id = document.getElementById("student_id").value;
+        const course = document.getElementById("course").value;
+        const grade = Number(document.getElementById("grade").value);
+
+        try {
+          const response = await fetch("/grades", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + token,
+            },
+            body: JSON.stringify({ student_id, course, grade }),
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            message.textContent = "Grade saved successfully!";
+            gradeForm.reset();
+          } else {
+            message.textContent = data.error || "Unable to save grade.";
+          }
+        } catch (error) {
+          message.textContent = "Unable to connect to Enter Data.";
+        }
+      });
+
+      document
+        .getElementById("logoutButton")
+        .addEventListener("click", function () {
+          token = "";
+          gradeForm.classList.add("hidden");
+          loginForm.classList.remove("hidden");
+          loginForm.reset();
+          message.textContent = "Logged out.";
+        });
+    </script>
+  </body>
+</html>
