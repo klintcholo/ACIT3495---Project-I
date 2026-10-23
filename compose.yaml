@@ -2,14 +2,26 @@ services:
   enter-data:
     build:
       context: ./enter-data
-      dockerfile: Dockerfile
     environment:
       - DATABASE_URL=mysql+pymysql://admin:${MYSQL_PASSWORD}@db:3306/grades
+      - JWT_SECRET=${JWT_SECRET}
     ports:
       - "127.0.0.1:5000:5000"
     depends_on:
       db:
         condition: service_healthy
+    mem_limit: 256m
+    cpus: 0.5
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request;urllib.request.urlopen('http://127.0.0.1:5000/health')",
+        ]
+      interval: 5s
+      retries: 5
 
   db:
     image: mysql:8.4
@@ -22,11 +34,29 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 --silent"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1"]
       interval: 5s
-      timeout: 3s
       retries: 10
-      start_period: 30s
+
+  auth-service:
+    build:
+      context: ./auth-service
+    environment:
+      - AUTH_USERNAME=${AUTH_USERNAME}
+      - AUTH_PASSWORD=${AUTH_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+    ports:
+      - "127.0.0.1:5001:5001"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request;urllib.request.urlopen('http://127.0.0.1:5001/health')",
+        ]
+      interval: 10s
+      retries: 3
 
 volumes:
   mysql-data:
