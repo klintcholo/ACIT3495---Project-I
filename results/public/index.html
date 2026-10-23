@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Dashboard</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f8;
+            margin: 0;
+            padding: 40px;
+            color: #1e293b;
+        }
+
+        main {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            margin-bottom: 8px;
+        }
+
+        #status {
+            color: #64748b;
+            margin-bottom: 25px;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns:
+                repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background-color: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 3px 12px #00000012;
+        }
+
+        .label {
+            color: #64748b;
+            font-size: 14px;
+        }
+
+        .value {
+            font-size: 32px;
+            font-weight: bold;
+            margin-top: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <h1>Analytics Dashboard</h1>
+
+        <p id="status">Loading statistics...</p>
+
+        <div class="dashboard">
+
+            <div class="card">
+                <div class="label">Count</div>
+                <div class="value" id="count">-</div>
+            </div>
+
+            <div class="card">
+                <div class="label">Minimum</div>
+                <div class="value" id="minimum">-</div>
+            </div>
+
+            <div class="card">
+                <div class="label">Maximum</div>
+                <div class="value" id="maximum">-</div>
+            </div>
+
+            <div class="card">
+                <div class="label">Average</div>
+                <div class="value" id="average">-</div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        function formatNumber(value) {
+            if (value === null || value === undefined) {
+                return "-";
+            }
+
+            return Number(value).toFixed(2);
+        }
+
+        async function loadStatistics() {
+            const status = document.getElementById("status");
+
+            try {
+                const response = await fetch("/api/statistics", {
+                    cache: "no-store"
+                });
+
+                if (!response.ok) {
+                    throw new Error("HTTP " + response.status);
+                }
+
+                const data = await response.json();
+
+                document.getElementById("count").textContent =
+                    data.count;
+
+                document.getElementById("minimum").textContent =
+                    formatNumber(data.minimum);
+
+                document.getElementById("maximum").textContent =
+                    formatNumber(data.maximum);
+
+                document.getElementById("average").textContent =
+                    formatNumber(data.average);
+
+                if (data.updated_at) {
+                    status.textContent =
+                        "Last calculated: " +
+                        new Date(data.updated_at).toLocaleString("en-CA");
+                } else {
+                    status.textContent = "Statistics loaded successfully";
+                }
+
+            } catch (error) {
+                status.textContent =
+                    "Statistics cannot be loaded at the moment.";
+
+                console.error("Error loading statistics:", error);
+            }
+        }
+
+        // Load statistics when the page opens
+        loadStatistics();
+
+        // Refresh statistics every 10 seconds
+        setInterval(loadStatistics, 10000);
+    </script>
+</body>
+</html>

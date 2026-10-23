@@ -24,25 +24,48 @@ jobs:
           - service: enter-data
             context: ./enter-data
             files: "app.py models.py"
+          - service: analytics
+            context: ./analytics
+            files: "analytics.py"
+          - service: results
+            context: ./results
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Python
+        if: matrix.service != 'results'
         uses: actions/setup-python@v5
         with:
           python-version: "3.14"
 
       - name: Install dependencies
+        if: matrix.service != 'results'
         working-directory: ${{ matrix.context }}
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
 
       - name: Check Python syntax
+        if: matrix.service != 'results'
         working-directory: ${{ matrix.context }}
         run: python -m compileall -q ${{ matrix.files }}
+
+      - name: Set up Node.js
+        if: matrix.service == 'results'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: results/package-lock.json
+
+      - name: Check Results dependencies
+        if: matrix.service == 'results'
+        working-directory: ./results
+        run: |
+          npm ci
+          node --check server.js
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3

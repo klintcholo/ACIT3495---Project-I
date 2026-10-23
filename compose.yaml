@@ -6,7 +6,7 @@ services:
       - DATABASE_URL=mysql+pymysql://admin:${MYSQL_PASSWORD}@db:3306/grades
       - JWT_SECRET=${JWT_SECRET}
     ports:
-      - "127.0.0.1:5000:5000"
+      - "127.0.0.1:5002:5000"
     depends_on:
       db:
         condition: service_healthy
@@ -58,5 +58,77 @@ services:
       interval: 10s
       retries: 3
 
+  mongodb:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?MONGO_ROOT_PASSWORD is required}
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --eval
+        - "db.adminCommand('ping').ok"
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  analytics:
+    build:
+      context: ./analytics
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      MYSQL_HOST: db
+      MYSQL_PORT: "3306"
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}
+      MYSQL_DATABASE: grades
+      MONGO_URI: "mongodb://admin:${MONGO_ROOT_PASSWORD:?MONGO_ROOT_PASSWORD is required}@mongodb:27017/?authSource=admin"
+    depends_on:
+      db:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import os, sys, time; p='/tmp/analytics-healthy'; sys.exit(0 if os.path.exists(p) and time.time() - os.path.getmtime(p) < 90 else 1)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+
+  results:
+    build:
+      context: ./results
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      MONGO_URI: "mongodb://admin:${MONGO_ROOT_PASSWORD:?MONGO_ROOT_PASSWORD is required}@mongodb:27017/?authSource=admin"
+    ports:
+      - "127.0.0.1:3001:3001"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3001/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
 volumes:
   mysql-data:
+  mongodb_data:
