@@ -61,7 +61,7 @@ flowchart TB
    JWT_SECRET=<long-random-signing-secret>
   ```
   
-   Use the same `JWT_SECRET` for both the Authentication and Enter Data services. Do not commit `.env` to Git.
+ Use the same `JWT_SECRET` for both the Authentication and Enter Data services. Do not commit `.env` to Git.
    
    **Important:**
 - Never commit `.env` or real credentials to Git.
