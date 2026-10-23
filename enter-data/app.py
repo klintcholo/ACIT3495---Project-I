@@ -1,5 +1,5 @@
-
 import os
+import jwt
 from flask import Flask, jsonify, request
 from models import db, Grade
 
@@ -9,6 +9,10 @@ app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db.init_app(app)
+JWT_SECRET = os.environ["JWT_SECRET"]
+
+with app.app_context():
+    db.create_all()
 
 
 @app.route("/")
@@ -17,9 +21,30 @@ def home():
         "message": "Student Grade Analytics - Enter Data"
     })
 
+@app.route("/health")
+def health():
+    return jsonify({
+        "status": "Healthy"
+    }), 200
+
 
 @app.route("/grades", methods=["POST"])
 def enter_grade():
+
+    # Step 1: Check authentication
+    authorization = request.headers.get("Authorization", "")
+
+    if not authorization.startswith("Bearer "):
+        return jsonify({"error": "Authentication required"}), 401
+
+    token = authorization[7:]
+
+    try:
+        jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+    except jwt.InvalidTokenError:
+        return jsonify({"error": "Invalid or expired token"}), 401
+
+    # Step 2: Validate the grade data
     data = request.get_json(silent=True)
 
     if not isinstance(data, dict):
@@ -41,6 +66,7 @@ def enter_grade():
     if not 0 <= grade <= 100:
         return jsonify({"error": "Grade must be between 0 and 100"}), 400
 
+    # Step 3: Save the grade to MySQL
     new_grade = Grade(
         student_id=student_id.strip(),
         course=course.strip(),

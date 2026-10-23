@@ -8,10 +8,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app.py models.py ./
 
-RUN useradd appuser
+RUN useradd --create-home appuser
 
 USER appuser
 
 EXPOSE 5000
 
-CMD ["python", "app.py"]
+# CMD ["python", "app.py"]
+
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:5000"]
